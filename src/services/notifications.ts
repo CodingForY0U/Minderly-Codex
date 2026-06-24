@@ -23,32 +23,40 @@ export async function scheduleReminderNotification({
     return undefined;
   }
 
-  const permissions = await Notifications.getPermissionsAsync();
-  const finalStatus =
-    permissions.status === 'granted' ? permissions.status : (await Notifications.requestPermissionsAsync()).status;
-
-  if (finalStatus !== 'granted') {
+  if (process.env.EXPO_OS === 'web') {
     return undefined;
   }
 
-  if (process.env.EXPO_OS === 'android') {
-    await Notifications.setNotificationChannelAsync('reminders', {
-      name: 'Reminders',
-      importance: Notifications.AndroidImportance.HIGH,
-    });
-  }
+  try {
+    const permissions = await Notifications.getPermissionsAsync();
+    const finalStatus =
+      permissions.status === 'granted' ? permissions.status : (await Notifications.requestPermissionsAsync()).status;
 
-  return Notifications.scheduleNotificationAsync({
-    content: {
-      title,
-      body,
-    },
-    trigger: {
-      type: Notifications.SchedulableTriggerInputTypes.DATE,
-      date: scheduledAt,
-      channelId: 'reminders',
-    },
-  });
+    if (finalStatus !== 'granted') {
+      return undefined;
+    }
+
+    if (process.env.EXPO_OS === 'android') {
+      await Notifications.setNotificationChannelAsync('reminders', {
+        name: 'Reminders',
+        importance: Notifications.AndroidImportance.HIGH,
+      });
+    }
+
+    return Notifications.scheduleNotificationAsync({
+      content: {
+        title,
+        body,
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DATE,
+        date: scheduledAt,
+        channelId: 'reminders',
+      },
+    });
+  } catch {
+    return undefined;
+  }
 }
 
 export async function cancelReminderNotification(notificationId?: string) {
@@ -56,5 +64,9 @@ export async function cancelReminderNotification(notificationId?: string) {
     return;
   }
 
-  await Notifications.cancelScheduledNotificationAsync(notificationId);
+  try {
+    await Notifications.cancelScheduledNotificationAsync(notificationId);
+  } catch {
+    // Local reminder state should still update even if the OS notification cannot be cancelled.
+  }
 }

@@ -38,6 +38,11 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
   const [currentParsedMessage, setCurrentParsedMessage] = React.useState<ParsedMessage | null>(null);
   const [languagePreference, setLanguagePreferenceState] = React.useState(defaultLanguage);
   const [reminders, setReminders] = React.useState<Reminder[]>([]);
+  const remindersRef = React.useRef<Reminder[]>([]);
+
+  React.useEffect(() => {
+    remindersRef.current = reminders;
+  }, [reminders]);
 
   React.useEffect(() => {
     let isMounted = true;
@@ -49,7 +54,9 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
       ]);
 
       if (isMounted) {
-        setReminders(sortReminders(storedReminders));
+        const sortedReminders = sortReminders(storedReminders);
+        remindersRef.current = sortedReminders;
+        setReminders(sortedReminders);
         setLanguagePreferenceState(storedLanguage);
       }
     }
@@ -68,6 +75,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
 
   const persistReminders = React.useCallback(async (nextReminders: Reminder[]) => {
     const sorted = sortReminders(nextReminders);
+    remindersRef.current = sorted;
     setReminders(sorted);
     await saveStoredReminders(sorted);
   }, []);
@@ -91,15 +99,16 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
         updatedAt: now,
       };
 
-      await persistReminders([...reminders, reminder]);
+      await persistReminders([...remindersRef.current, reminder]);
       return reminder;
     },
-    [persistReminders, reminders]
+    [persistReminders]
   );
 
   const toggleReminderDone = React.useCallback(
     async (id: string) => {
-      const reminder = reminders.find((item) => item.id === id);
+      const currentReminders = remindersRef.current;
+      const reminder = currentReminders.find((item) => item.id === id);
       if (!reminder) {
         return;
       }
@@ -110,7 +119,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
       }
 
       await persistReminders(
-        reminders.map((item) =>
+        currentReminders.map((item) =>
           item.id === id
             ? {
                 ...item,
@@ -122,7 +131,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
         )
       );
     },
-    [persistReminders, reminders]
+    [persistReminders]
   );
 
   const value = React.useMemo(

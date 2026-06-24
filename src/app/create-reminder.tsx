@@ -84,16 +84,21 @@ export default function CreateReminderScreen() {
       return;
     }
 
-    setIsSaving(true);
-    await addReminder({
-      title: title.trim(),
-      scheduledAt: scheduledAt.toISOString(),
-      location: location.trim() || undefined,
-      notes: notes.trim(),
-      sourceMessageId: currentParsedMessage?.id,
-    });
-    setIsSaving(false);
-    router.replace({ pathname: '/reminders' });
+    try {
+      setIsSaving(true);
+      await addReminder({
+        title: title.trim(),
+        scheduledAt: scheduledAt.toISOString(),
+        location: location.trim() || undefined,
+        notes: notes.trim(),
+        sourceMessageId: currentParsedMessage?.id,
+      });
+      router.replace({ pathname: '/reminders' });
+    } catch {
+      Alert.alert('Could not save reminder', 'Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   return (
